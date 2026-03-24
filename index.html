@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corporate Ladder — Typing Survival Game</title>
+<style>
+/* ============================================================
+   CSS CUSTOM PROPERTIES & RESET
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  /* Palette */
+  --bg-dark:    #0b1120;
+  --bg-mid:     #131b2e;
+  --bg-light:   #1e293b;
+  --accent:     #3b82f6;
+  --accent-glow:#60a5fa;
+  --success:    #22c55e;
+  --danger:     #ef4444;
+  --gold:       #f59e0b;
+  --gold-light: #fbbf24;
+  --text:       #e2e8f0;
+  --text-dim:   #94a3b8;
+  --glass:      rgba(255,255,255,0.06);
+  --glass-border:rgba(255,255,255,0.10);
+  --glass-strong:rgba(255,255,255,0.10);
+  /* Typography */
+  --font: "Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono: "Fira Code","SF Mono","Cascadia Code",monospace;
+  /* Sizes */
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+
+html,body {
+  height:100%;
+  overflow:hidden;
+  background: linear-gradient(160deg, var(--bg-dark) 0%, var(--bg-mid) 50%, var(--bg-dark) 100%);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   SHARED UI
+   ============================================================ */
+.screen {
+  position: fixed; inset:0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .45s ease, transform .45s ease;
+  transform: scale(.97);
+  z-index: 1;
+}
+.screen.active {
+  opacity:1; pointer-events:auto; transform:scale(1); z-index:10;
+}
+
+/* Glass card */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 36px;
+  font-family: var(--font); font-size: 1rem; font-weight: 600;
+  color: #fff; border: none; border-radius: 50px; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent) 0%, #2563eb 100%);
+  box-shadow: 0 4px 20px rgba(59,130,246,.35);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  position: relative; overflow: hidden;
+}
+.btn::after {
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events:none;
+}
+.btn:hover  { transform:translateY(-2px); box-shadow:0 6px 28px rgba(59,130,246,.5); }
+.btn:active { transform:translateY(0); }
+.btn.secondary {
+  background: var(--glass-strong);
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  border: 1px solid var(--glass-border);
+}
+.btn.secondary:hover { background: rgba(255,255,255,.12); }
+.btn.danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+  box-shadow: 0 4px 20px rgba(239,68,68,.3);
+}
+.btn.gold {
+  background: linear-gradient(135deg, var(--gold) 0%, #d97706 100%);
+  box-shadow: 0 4px 20px rgba(245,158,11,.35);
+  color: #1a1a2e;
+}
+
+/* ============================================================
+   FLOATING BACKGROUND SHAPES (decorative)
+   ============================================================ */
+.bg-shapes {
+  position: fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+}
+.bg-shapes span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  opacity: .045;
+  background: var(--accent);
+  animation: floatShape linear infinite;
+}
+@keyframes floatShape {
+  0%   { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-110vh) rotate(720deg); }
+}
+
+/* ============================================================
+   START SCREEN
+   ============================================================ */
+#startScreen { gap: 24px; }
+.start-title {
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  font-weight: 800; letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent-glow) 0%, var(--gold-light) 50%, var(--accent-glow) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s ease infinite;
+  text-align: center;
+  filter: drop-shadow(0 0 30px rgba(59,130,246,.3));
+}
+@keyframes gradientShift {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.start-tagline {
+  font-size: 1.15rem; color: var(--text-dim); text-align:center;
+  max-width: 480px; line-height:1.6;
+}
+.start-buttons { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+.high-score-badge {
+  margin-top: 18px; padding: 10px 22px;
+  border-radius: 50px; font-size: .88rem;
+  color: var(--gold-light); border: 1px solid rgba(251,191,36,.2);
+  background: rgba(251,191,36,.07);
+}
+.high-score-badge span { font-weight:700; }
+
+/* Letter-by-letter animation on title */
+.start-title .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(30px) scale(.7);
+  animation: charIn .45s ease forwards;
+}
+@keyframes charIn {
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+
+/* ============================================================
+   INSTRUCTIONS MODAL
+   ============================================================ */
+#instructionsModal {
+  z-index: 100;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(6px);
+}
+.instructions-card {
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 36px 32px;
+}
+.instructions-card h2 {
+  font-size: 1.5rem; margin-bottom:18px;
+  background: linear-gradient(135deg, var(--accent-glow), var(--gold-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip:text;
+}
+.instructions-card h3 { font-size:1.05rem; color:var(--accent-glow); margin:16px 0 8px; }
+.instructions-card p, .instructions-card li {
+  font-size:.93rem; color:var(--text-dim); line-height:1.65;
+}
+.instructions-card ul { padding-left:20px; }
+.instructions-card li { margin-bottom:4px; }
+.instructions-card .close-btn {
+  margin-top:22px; width:100%;
+}
+.instructions-card kbd {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
+  font-family:var(--mono); font-size:.85rem;
+}
+
+/* ============================================================
+   COUNTDOWN OVERLAY
+   ============================================================ */
+#countdownOverlay {
+  z-index:50;
+  background: rgba(11,17,32,.85);
+  backdrop-filter: blur(8px);
+}
+.countdown-number {
+  font-size: 8rem; font-weight:800;
+  color: var(--accent-glow);
+  text-shadow: 0 0 60px rgba(96,165,250,.5);
+  animation: countPop .65s ease;
+}
+@keyframes countPop {
+  0%   { transform:scale(2); opacity:0; }
+  50%  { transform:scale(.95); opacity:1; }
+  100% { transform:scale(1); opacity:1; }
+}
+.countdown-label {
+  font-size:1.1rem; color:var(--text-dim); margin-top:8px; letter-spacing:2px; text-transform:uppercase;
+}
+
+/* ============================================================
+   GAME SCREEN
+   ============================================================ */
+#gameScreen {
+  justify-content: flex-start;
+  padding: 0;
+}
+
+/* HUD */
+.hud {
+  display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap:wrap;
+  width: 100%; padding: 12px 20px;
+  background: rgba(11,17,32,.7);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  z-index: 20; position:relative;
+}
+.hud-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .88rem; color: var(--text-dim);
+  white-space: nowrap;
+}
+.hud-item .label { font-weight:500; text-transform:uppercase; font-size:.72rem; letter-spacing:1px; }
+.hud-item .value { font-weight:700; font-size:1.08rem; color:var(--text); font-variant-numeric:tabular-nums; }
+.hud-item .value.accent { color:var(--accent-glow); }
+.hud-item .value.gold   { color:var(--gold-light); }
+.hud-item .value.danger  { color:var(--danger); }
+
+/* Hearts */
+.hearts { display:flex; gap:3px; }
+.heart { font-size:1.15rem; transition: transform .2s, opacity .3s; }
+.heart.lost { opacity:.2; transform:scale(.7); }
+
+/* Combo badge */
+.combo-badge {
+  display:inline-flex; align-items:center; gap:3px;
+  padding: 3px 10px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--gold) 0%, #d97706 100%);
+  color:#1a1a2e; font-weight:800; font-size:.82rem;
+  transform: scale(0); transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.combo-badge.show { transform:scale(1); }
+
+/* Pause / Mute buttons in HUD */
+.hud-btn {
+  background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
+  color:var(--text-dim); padding:6px 10px; border-radius:8px;
+  cursor:pointer; font-size:.92rem; transition: background .15s;
+}
+.hud-btn:hover { background: rgba(255,255,255,.14); }
+
+/* Game area */
+.game-area {
+  flex:1; width:100%; position:relative; overflow:hidden;
+}
+
+/* Warning zone (bottom 18%) */
+.game-area::after {
+  content:"";
+  position:absolute; bottom:0; left:0; right:0;
+  height: 18%;
+  background: linear-gradient(to top, rgba(239,68,68,.10) 0%, transparent 100%);
+  pointer-events:none; z-index:1;
+  border-top: 1px dashed rgba(239,68,68,.15);
+}
+
+/* Input area */
+.input-area {
+  width:100%; padding:14px 20px;
+  background: rgba(11,17,32,.8);
+  border-top:1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  display:flex; align-items:center; gap:12px; justify-content:center;
+  z-index:20; position:relative;
+}
+.input-area input {
+  width: min(500px, 70vw);
+  padding: 14px 22px;
+  font-size: 1.15rem; font-family:var(--mono); font-weight:500;
+  color: var(--text);
+  background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.12);
+  border-radius: 50px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  text-align: center; letter-spacing: 1px;
+}
+.input-area input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(59,130,246,.2);
+}
+.input-area input.shake {
+  animation: shakeInput .35s ease;
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 20px rgba(239,68,68,.3) !important;
+}
+@keyframes shakeInput {
+  0%,100% { transform:translateX(0); }
+  20%     { transform:translateX(-8px); }
+  40%     { transform:translateX(8px); }
+  60%     { transform:translateX(-5px); }
+  80%     { transform:translateX(5px); }
+}
+.input-area input.flash-green {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 24px rgba(34,197,94,.35) !important;
+}
+
+/* ============================================================
+   FALLING WORDS
+   ============================================================ */
+.word {
+  position: absolute;
+  top: -50px;
+  padding: 8px 20px;
+  border-radius: 50px;
+  font-family: var(--mono);
+  font-size: 1.05rem; font-weight: 600;
+  color: var(--text);
+  background: rgba(59,130,246,.12);
+  border: 1px solid rgba(59,130,246,.25);
+  white-space: nowrap;
+  z-index: 5;
+  animation: fallWord var(--fall-duration) linear forwards;
+  cursor: default;
+  transition: background .2s, border-color .2s, box-shadow .2s;
+  text-shadow: 0 0 8px rgba(96,165,250,.3);
+}
+.word.highlight {
+  background: rgba(59,130,246,.25);
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 16px rgba(96,165,250,.3);
+}
+.word.danger-zone {
+  background: rgba(239,68,68,.15) !important;
+  border-color: rgba(239,68,68,.5) !important;
+  color: #fca5a5 !important;
+  animation-name: fallWordDanger;
+  text-shadow: 0 0 8px rgba(239,68,68,.4);
+}
+@keyframes fallWord {
+  0%   { top: -50px; }
+  100% { top: calc(100% + 10px); }
+}
+@keyframes fallWordDanger {
+  0%   { top: -50px; }
+  100% { top: calc(100% + 10px); }
+}
+
+/* Word matched - success */
+.word.matched {
+  animation: wordPop .4s ease forwards !important;
+  background: rgba(34,197,94,.3) !important;
+  border-color: var(--success) !important;
+  color: var(--success) !important;
+  box-shadow: 0 0 30px rgba(34,197,94,.4) !important;
+}
+@keyframes wordPop {
+  0%   { transform:scale(1); opacity:1; }
+  50%  { transform:scale(1.3); opacity:.8; }
+  100% { transform:scale(1.6); opacity:0; }
+}
+
+/* Word missed - strike */
+.word.missed {
+  animation: wordMiss .45s ease forwards !important;
+  background: rgba(239,68,68,.3) !important;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+@keyframes wordMiss {
+  0%   { transform:scale(1); opacity:1; }
+  100% { transform:scale(.5) translateY(30px); opacity:0; }
+}
+
+/* Particles */
+.particle {
+  position:absolute; width:6px; height:6px;
+  border-radius:50%; pointer-events:none;
+  z-index:15;
+  animation: particleFly .6s ease-out forwards;
+}
+@keyframes particleFly {
+  0%   { transform:translate(0,0) scale(1); opacity:1; }
+  100% { transform:translate(var(--px),var(--py)) scale(0); opacity:0; }
+}
+
+/* Screen flash on strike */
+.strike-flash {
+  position:fixed; inset:0; z-index:30;
+  pointer-events:none;
+  background: radial-gradient(ellipse at center, rgba(239,68,68,.15) 0%, transparent 70%);
+  animation: flashIn .4s ease forwards;
+}
+@keyframes flashIn {
+  0%   { opacity:1; }
+  100% { opacity:0; }
+}
+
+/* ============================================================
+   PAUSE OVERLAY
+   ============================================================ */
+#pauseOverlay {
+  z-index:60;
+  background: rgba(11,17,32,.85);
+  backdrop-filter: blur(10px);
+  gap:20px;
+}
+#pauseOverlay h2 {
+  font-size:2.2rem; color:var(--accent-glow);
+}
+
+/* ============================================================
+   END SCREENS (WIN / LOSE)
+   ============================================================ */
+.end-card {
+  width: min(480px, 90vw);
+  padding: 40px 34px;
+  text-align: center;
+}
+.end-card .end-icon { font-size:4rem; margin-bottom:10px; }
+.end-card h2 {
+  font-size:2rem; font-weight:800; margin-bottom:4px;
+}
+.end-card .end-subtitle {
+  font-size:1rem; color:var(--text-dim); margin-bottom:24px;
+}
+.end-card .stats-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px;
+}
+.stat-box {
+  padding:14px 10px; border-radius:var(--radius-sm);
+  background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+}
+.stat-box .stat-value { font-size:1.5rem; font-weight:800; color:var(--accent-glow); }
+.stat-box .stat-label { font-size:.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+.stat-box.gold .stat-value { color:var(--gold-light); }
+.stat-box.green .stat-value { color:var(--success); }
+.stat-box.red .stat-value { color:var(--danger); }
+
+.end-card .rank-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 24px; border-radius:50px; margin-bottom:20px;
+  background: linear-gradient(135deg,rgba(251,191,36,.15),rgba(245,158,11,.05));
+  border:1px solid rgba(251,191,36,.3);
+  color:var(--gold-light); font-weight:700; font-size:1.05rem;
+}
+.end-card .end-buttons { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.end-card .new-highscore {
+  color:var(--gold-light); font-weight:700; font-size:.92rem; margin-bottom:8px;
+  animation: hsPulse 1s ease infinite;
+}
+@keyframes hsPulse {
+  0%,100% { opacity:1; }
+  50%     { opacity:.5; }
+}
+
+/* Win specific */
+#winScreen h2 { color:var(--success); }
+/* Lose specific */
+#loseScreen h2 { color:var(--danger); }
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     DECORATIVE BACKGROUND SHAPES
+     ============================================================ -->
+<div class="bg-shapes" id="bgShapes"></div>
+
+<!-- ============================================================
+     START SCREEN
+     ============================================================ -->
+<div class="screen active" id="startScreen">
+  <h1 class="start-title" id="titleText"></h1>
+  <p class="start-tagline">Type fast. Climb higher. Don't get fired.<br>A fast-paced typing survival game.</p>
+  <div class="start-buttons">
+    <button class="btn" id="btnStart">&#9654;&ensp;Start Game</button>
+    <button class="btn secondary" id="btnInstructions">&#9432;&ensp;How to Play</button>
+  </div>
+  <div class="high-score-badge" id="highScoreBadge" style="display:none">
+    &#127942; Best Score: <span id="highScoreValue">0</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     INSTRUCTIONS MODAL
+     ============================================================ -->
+<div class="screen" id="instructionsModal">
+  <div class="glass instructions-card">
+    <h2>&#128218; How to Play</h2>
+
+    <h3>&#127919; Objective</h3>
+    <p>Words fall from the top of the screen. Type them before they reach the bottom to survive for <strong>2 minutes</strong> and earn your promotion!</p>
+
+    <h3>&#9888;&#65039; Rules</h3>
+    <ul>
+      <li>If a word reaches the bottom, you get a <strong>strike</strong>.</li>
+      <li><strong>3 strikes</strong> and you're <strong>fired!</strong></li>
+      <li>Survive 2 minutes to get <strong>promoted</strong>.</li>
+      <li>Difficulty increases over time &mdash; words fall faster and spawn more frequently.</li>
+    </ul>
+
+    <h3>&#127918; Controls</h3>
+    <ul>
+      <li>Just start typing to match a falling word.</li>
+      <li>Words are matched <strong>live</strong> as you type &mdash; no need to press Enter.</li>
+      <li>Press <kbd>Esc</kbd> to pause/resume.</li>
+    </ul>
+
+    <h3>&#11088; Scoring</h3>
+    <ul>
+      <li>Points = word length &times; 10 &times; combo multiplier.</li>
+      <li>Streak multipliers: <strong>&times;1</strong> (0-2), <strong>&times;1.5</strong> (3-5), <strong>&times;2</strong> (6-9), <strong>&times;3</strong> (10+).</li>
+    </ul>
+
+    <h3>&#128200; Ranks</h3>
+    <p>Your rank climbs as you progress: <strong>Intern → Associate → Manager → Director → VP</strong></p>
+
+    <button class="btn secondary close-btn" id="btnCloseInstructions">Got it!</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     COUNTDOWN OVERLAY
+     ============================================================ -->
+<div class="screen" id="countdownOverlay">
+  <div class="countdown-number" id="countdownNumber">3</div>
+  <div class="countdown-label">Get ready...</div>
+</div>
+
+<!-- ============================================================
+     GAME SCREEN
+     ============================================================ -->
+<div class="screen" id="gameScreen">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-item">
+      <span class="label">Score</span>
+      <span class="value accent" id="hudScore">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="label">Lives</span>
+      <span class="hearts" id="hudHearts">
+        <span class="heart">&#10084;&#65039;</span>
+        <span class="heart">&#10084;&#65039;</span>
+        <span class="heart">&#10084;&#65039;</span>
+      </span>
+    </div>
+    <div class="hud-item">
+      <span class="label">Time</span>
+      <span class="value" id="hudTime">2:00</span>
+    </div>
+    <div class="hud-item">
+      <span class="label">Streak</span>
+      <span class="value gold" id="hudStreak">0</span>
+      <span class="combo-badge" id="comboBadge">&times;1</span>
+    </div>
+    <div class="hud-item">
+      <span class="label">Rank</span>
+      <span class="value" id="hudRank">Intern</span>
+    </div>
+    <button class="hud-btn" id="btnMute" title="Toggle sound">&#128264;</button>
+    <button class="hud-btn" id="btnPause" title="Pause (Esc)">&#10074;&#10074;</button>
+  </div>
+
+  <!-- Falling word area -->
+  <div class="game-area" id="gameArea"></div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <input type="text" id="gameInput" placeholder="Type the words..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+</div>
+
+<!-- ============================================================
+     PAUSE OVERLAY
+     ============================================================ -->
+<div class="screen" id="pauseOverlay">
+  <h2>&#10074;&#10074; Paused</h2>
+  <p style="color:var(--text-dim);margin-bottom:8px;">Take a breather.</p>
+  <button class="btn" id="btnResume">&#9654;&ensp;Resume</button>
+</div>
+
+<!-- ============================================================
+     WIN SCREEN
+     ============================================================ -->
+<div class="screen" id="winScreen">
+  <div class="glass end-card">
+    <div class="end-icon">&#127881;</div>
+    <h2>You've Been Promoted!</h2>
+    <div class="end-subtitle">Outstanding performance review. The board is impressed.</div>
+    <div class="rank-badge" id="winRank">&#128081; VP</div>
+    <div class="new-highscore" id="winNewHS" style="display:none">&#127942; New High Score!</div>
+    <div class="stats-grid" id="winStats"></div>
+    <div class="end-buttons">
+      <button class="btn gold" id="btnRestartWin">&#9654;&ensp;Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOSE SCREEN
+     ============================================================ -->
+<div class="screen" id="loseScreen">
+  <div class="glass end-card">
+    <div class="end-icon">&#128148;</div>
+    <h2>You're Fired!</h2>
+    <div class="end-subtitle">HR will be in touch. Please return your badge.</div>
+    <div class="rank-badge" id="loseRank">&#128188; Intern</div>
+    <div class="new-highscore" id="loseNewHS" style="display:none">&#127942; New High Score!</div>
+    <div class="stats-grid" id="loseStats"></div>
+    <div class="end-buttons">
+      <button class="btn danger" id="btnRestartLose">&#9654;&ensp;Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+/* =============================================================
+   WORD POOL — categorised by length / difficulty
+   ============================================================= */
+const WORDS_EASY = [
+  "KPI","bug","git","API","CSS","UX","SQL","dev","var","log",
+  "MVP","ROI","SLA","OKR","DNS","TCP","SSH","npm","hub","app"
+];
+const WORDS_MEDIUM = [
+  "sync","team","memo","task","code","push","pull","test","ship","scrum",
+  "lean","risk","data","plan","goal","hire","fire","boss","rank","send",
+  "flow","loop","node","repo","diff","hash","ping","ajax","heap","type",
+  "agile","merge","build","audit","brand","cloud","debug","event","fetch",
+  "grant","issue","model","query","route","scale","stack","token","email",
+  "scope","stand","usage","board","chart","delay","draft","input","lease"
+];
+const WORDS_HARD = [
+  "deploy","sprint","budget","synergy","merger","profit","growth","legacy",
+  "matrix","review","design","layout","server","client","socket","render",
+  "kernel","module","docker","devops","cursor","search","binary","config",
+  "dunning","equity","impact","intern","junior","launch","markup","native",
+  "patent","portal","schema","signal","syntax","thread","ticket","vendor",
+  "widget","window","annual","branch","commit","comply","deceit"
+];
+const WORDS_EXPERT = [
+  "backlog","meeting","roadmap","mandate","revenue","quarter","divest",
+  "decrypt","encrypt","gateway","hosting","library","migrate","network",
+  "package","process","project","release","runtime","sandbox","testing",
+  "upgrade","version","webhook","wrapper","adapter","binding","cluster",
+  "console","monitor","payload","service","utility","balance","capital",
+  "deficit","expense","invoice","subsidy","surplus","outcome"
+];
+const WORDS_MASTER = [
+  "deadline","pipeline","kanboard","feedback","refactor","strategy",
+  "notebook","endpoint","function","hardware","platform","software",
+  "template","debugger","compiler","database","frontend","protocol",
+  "register","resolver","terminal","variable","workflow","dividend",
+  "forecast","overhead","proposal","research","turnover","meetings",
+  "alliance","blogging","branding","campaign","customer","delegate",
+  "engineer","investor","momentum","optimize","priority","resource",
+  "schedule","solution","transfer","warranty"
+];
+const WORDS_LEGENDARY = [
+  "alignment","bandwidth","benchmark","bootstrap","component","container",
+  "framework","integrate","interface","localhost","marketing","normalize",
+  "operation","parameter","provision","recursive","reference","refactors",
+  "streaming","transform","compliant","corporate","economics","executive",
+  "financial","guideline","implement","interview","licensing","logistics",
+  "narrative","objective","promotion","quarterly","redundant","scaleable",
+  "strategic","technique","workforce","synergize","downscale","ownership",
+  "quarterly","proactive","increment","microchip","blueprint","algorithm",
+  "appliance","broadband","checkfile","datasheet","ecosystem","fasttrace",
+  "guarantee","headcount","lifecycle","mentoring","netpolicy","offboard",
+  "paperwork","quickscan","roadblock","subsystem","takeaways","underline",
+  "valuation","warehouse","yearlyrev"
+];
+
+/* Rank config: name, min-seconds into game */
+const RANKS = [
+  { name:"Intern",     from:0   },
+  { name:"Associate",  from:20  },
+  { name:"Manager",    from:40  },
+  { name:"Director",   from:60  },
+  { name:"VP",         from:90  },
+];
+
+/* Difficulty tiers: when elapsed >= seconds, use these settings
+   burstChance = probability of spawning an extra word alongside the normal one */
+const DIFFICULTY = [
+  { from:0,   spawnInterval:2000, fallDuration:6.5, burstChance:0,    pools:[WORDS_EASY,WORDS_MEDIUM] },
+  { from:8,   spawnInterval:1650, fallDuration:5.5, burstChance:0.12, pools:[WORDS_EASY,WORDS_MEDIUM,WORDS_HARD] },
+  { from:18,  spawnInterval:1400, fallDuration:4.8, burstChance:0.25, pools:[WORDS_MEDIUM,WORDS_HARD,WORDS_EXPERT] },
+  { from:30,  spawnInterval:1150, fallDuration:4.2, burstChance:0.35, pools:[WORDS_MEDIUM,WORDS_HARD,WORDS_EXPERT] },
+  { from:42,  spawnInterval:950,  fallDuration:3.6, burstChance:0.45, pools:[WORDS_HARD,WORDS_EXPERT,WORDS_MASTER] },
+  { from:55,  spawnInterval:800,  fallDuration:3.1, burstChance:0.55, pools:[WORDS_HARD,WORDS_EXPERT,WORDS_MASTER] },
+  { from:68,  spawnInterval:680,  fallDuration:2.7, burstChance:0.60, pools:[WORDS_EXPERT,WORDS_MASTER,WORDS_LEGENDARY] },
+  { from:80,  spawnInterval:570,  fallDuration:2.4, burstChance:0.65, pools:[WORDS_EXPERT,WORDS_MASTER,WORDS_LEGENDARY] },
+  { from:92,  spawnInterval:480,  fallDuration:2.1, burstChance:0.75, pools:[WORDS_MASTER,WORDS_LEGENDARY] },
+  { from:105, spawnInterval:400,  fallDuration:1.8, burstChance:0.85, pools:[WORDS_MASTER,WORDS_LEGENDARY] },
+  { from:115, spawnInterval:340,  fallDuration:1.6, burstChance:0.90, pools:[WORDS_MASTER,WORDS_LEGENDARY] },
+];
+
+const GAME_DURATION = 120; // seconds
+const MAX_STRIKES = 3;
+
+/* =============================================================
+   AUDIO — tiny Web Audio synth (no files needed)
+   ============================================================= */
+let audioCtx = null;
+let muted = false;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq, duration, type, vol) {
+  if (muted || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+function sfxCorrect()  { playTone(880,.12,"sine",.18); setTimeout(()=>playTone(1100,.1,"sine",.12),60); }
+function sfxStrike()   { playTone(180,.25,"sawtooth",.15); }
+function sfxComboUp()  { playTone(660,.08,"sine",.12); setTimeout(()=>playTone(880,.08,"sine",.12),70); setTimeout(()=>playTone(1100,.12,"sine",.12),140); }
+function sfxCountdown(){ playTone(440,.15,"sine",.1); }
+function sfxGo()       { playTone(660,.1,"sine",.14); setTimeout(()=>playTone(880,.15,"sine",.14),80); }
+function sfxWin()      { [0,100,200,300,400].forEach((d,i)=>setTimeout(()=>playTone(600+i*100,.15,"sine",.12),d)); }
+function sfxLose()     { playTone(300,.3,"sawtooth",.12); setTimeout(()=>playTone(200,.4,"sawtooth",.1),200); }
+
+/* =============================================================
+   GAME STATE
+   ============================================================= */
+let state = {
+  score: 0,
+  strikes: 0,
+  streak: 0,
+  bestStreak: 0,
+  wordsCompleted: 0,
+  wordsMissed: 0,
+  totalChars: 0,
+  timeRemaining: GAME_DURATION,
+  elapsed: 0,
+  rank: "Intern",
+  isRunning: false,
+  isPaused: false,
+  activeWords: [],       // { id, text, el, fallDuration }
+  spawnTimer: null,
+  tickTimer: null,
+  currentDifficulty: DIFFICULTY[0],
+  wordIdCounter: 0,
+};
+
+/* =============================================================
+   DOM REFS
+   ============================================================= */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const screens = {
+  start:        $("#startScreen"),
+  instructions: $("#instructionsModal"),
+  countdown:    $("#countdownOverlay"),
+  game:         $("#gameScreen"),
+  pause:        $("#pauseOverlay"),
+  win:          $("#winScreen"),
+  lose:         $("#loseScreen"),
+};
+const hud = {
+  score:  $("#hudScore"),
+  hearts: $("#hudHearts"),
+  time:   $("#hudTime"),
+  streak: $("#hudStreak"),
+  combo:  $("#comboBadge"),
+  rank:   $("#hudRank"),
+};
+const gameArea  = $("#gameArea");
+const gameInput = $("#gameInput");
+
+/* =============================================================
+   HELPERS
+   ============================================================= */
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
+}
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
+function getMultiplier(streak) {
+  if (streak >= 10) return 3;
+  if (streak >= 6)  return 2;
+  if (streak >= 3)  return 1.5;
+  return 1;
+}
+function getHighScore() {
+  return parseInt(localStorage.getItem("cl_highscore") || "0", 10);
+}
+function setHighScore(val) {
+  localStorage.setItem("cl_highscore", val.toString());
+}
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function getDifficulty(elapsed) {
+  let d = DIFFICULTY[0];
+  for (const tier of DIFFICULTY) { if (elapsed >= tier.from) d = tier; }
+  return d;
+}
+function getRank(elapsed) {
+  let r = RANKS[0];
+  for (const rank of RANKS) { if (elapsed >= rank.from) r = rank; }
+  return r.name;
+}
+
+/* =============================================================
+   BACKGROUND SHAPES (generated once)
+   ============================================================= */
+function createBgShapes() {
+  const container = $("#bgShapes");
+  for (let i = 0; i < 12; i++) {
+    const span = document.createElement("span");
+    const size = 40 + Math.random() * 180;
+    span.style.width  = size + "px";
+    span.style.height = size + "px";
+    span.style.left   = Math.random() * 100 + "%";
+    span.style.bottom = -size + "px";
+    span.style.animationDuration = (18 + Math.random() * 30) + "s";
+    span.style.animationDelay    = (Math.random() * 20) + "s";
+    container.appendChild(span);
+  }
+}
+
+/* =============================================================
+   ANIMATED TITLE (letter-by-letter)
+   ============================================================= */
+function animateTitle() {
+  const text = "Corporate Ladder";
+  const el = $("#titleText");
+  el.innerHTML = "";
+  [...text].forEach((ch, i) => {
+    const span = document.createElement("span");
+    span.className = "char";
+    span.textContent = ch === " " ? "\u00A0" : ch;
+    span.style.animationDelay = (i * 0.04) + "s";
+    el.appendChild(span);
+  });
+}
+
+/* =============================================================
+   HIGH SCORE DISPLAY
+   ============================================================= */
+function updateHighScoreBadge() {
+  const hs = getHighScore();
+  const badge = $("#highScoreBadge");
+  if (hs > 0) {
+    badge.style.display = "inline-flex";
+    $("#highScoreValue").textContent = hs;
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+/* =============================================================
+   PARTICLES
+   ============================================================= */
+function spawnParticles(x, y, color) {
+  const count = 8;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("span");
+    p.className = "particle";
+    p.style.left = x + "px";
+    p.style.top  = y + "px";
+    p.style.background = color;
+    const angle = (Math.PI * 2 / count) * i + (Math.random() - .5) * .5;
+    const dist  = 30 + Math.random() * 50;
+    p.style.setProperty("--px", Math.cos(angle) * dist + "px");
+    p.style.setProperty("--py", Math.sin(angle) * dist + "px");
+    gameArea.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+
+/* =============================================================
+   STRIKE FLASH
+   ============================================================= */
+function flashStrike() {
+  const el = document.createElement("div");
+  el.className = "strike-flash";
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 450);
+}
+
+/* =============================================================
+   HUD UPDATE
+   ============================================================= */
+function updateHUD() {
+  hud.score.textContent  = state.score;
+  hud.time.textContent   = formatTime(state.timeRemaining);
+  hud.streak.textContent = state.streak;
+  hud.rank.textContent   = state.rank;
+
+  // Hearts
+  const hearts = hud.hearts.querySelectorAll(".heart");
+  hearts.forEach((h, i) => {
+    h.classList.toggle("lost", i >= (MAX_STRIKES - state.strikes));
+  });
+
+  // Combo badge
+  const mult = getMultiplier(state.streak);
+  const badge = hud.combo;
+  if (mult > 1) {
+    badge.textContent = `×${mult}`;
+    badge.classList.add("show");
+  } else {
+    badge.classList.remove("show");
+  }
+
+  // Time color
+  if (state.timeRemaining <= 15) {
+    hud.time.classList.add("danger");
+  } else {
+    hud.time.classList.remove("danger");
+  }
+}
+
+/* =============================================================
+   SPAWN WORD
+   ============================================================= */
+function spawnWord() {
+  if (!state.isRunning || state.isPaused) return;
+
+  const diff = state.currentDifficulty;
+  const pool = pickRandom(diff.pools);
+  let text = pickRandom(pool).toLowerCase();
+
+  // Avoid duplicates on screen
+  const activeTexts = state.activeWords.map(w => w.text);
+  let attempts = 0;
+  while (activeTexts.includes(text) && attempts < 15) {
+    text = pickRandom(pickRandom(diff.pools)).toLowerCase();
+    attempts++;
+  }
+
+  const wordId = state.wordIdCounter++;
+  const el = document.createElement("div");
+  el.className = "word";
+  el.textContent = text;
+
+  // Random horizontal position (with some padding)
+  const areaWidth = gameArea.clientWidth;
+  const wordWidth = text.length * 12 + 40; // rough estimate
+  const maxLeft = Math.max(10, areaWidth - wordWidth - 10);
+  const left = 10 + Math.random() * (maxLeft - 10);
+  el.style.left = left + "px";
+
+  // Fall duration with some randomness
+  const baseDuration = diff.fallDuration;
+  const duration = baseDuration + (Math.random() - 0.5) * 1.2;
+  el.style.setProperty("--fall-duration", duration + "s");
+  el.style.animationDuration = duration + "s";
+
+  // Danger zone detection — when word is near bottom
+  const dangerTimeout = setTimeout(() => {
+    if (el.parentNode && !el.classList.contains("matched")) {
+      el.classList.add("danger-zone");
+    }
+  }, duration * 0.78 * 1000);
+
+  // When word reaches bottom (animation ends without being matched)
+  const handleAnimEnd = () => {
+    if (el.classList.contains("matched") || el.classList.contains("missed")) return;
+    clearTimeout(dangerTimeout);
+    el.classList.add("missed");
+    state.strikes++;
+    state.streak = 0;
+    state.wordsMissed++;
+    sfxStrike();
+    flashStrike();
+    updateHUD();
+    setTimeout(() => { el.remove(); }, 500);
+    state.activeWords = state.activeWords.filter(w => w.id !== wordId);
+    if (state.strikes >= MAX_STRIKES) endGame(false);
+  };
+  el.addEventListener("animationend", handleAnimEnd);
+
+  gameArea.appendChild(el);
+  state.activeWords.push({ id: wordId, text, el, dangerTimeout });
+}
+
+/* =============================================================
+   INPUT HANDLING (live matching)
+   ============================================================= */
+function handleInput() {
+  const val = gameInput.value.toLowerCase().trim();
+  if (!val) {
+    // Remove highlights when input is cleared
+    state.activeWords.forEach(w => w.el.classList.remove("highlight"));
+    return;
+  }
+
+  // Check for exact match
+  const matched = state.activeWords.find(w => w.text === val);
+  if (matched) {
+    // SUCCESS
+    matched.el.classList.add("matched");
+    clearTimeout(matched.dangerTimeout);
+
+    // Particles at word position
+    const rect = matched.el.getBoundingClientRect();
+    const areaRect = gameArea.getBoundingClientRect();
+    spawnParticles(
+      rect.left - areaRect.left + rect.width / 2,
+      rect.top  - areaRect.top  + rect.height / 2,
+      "var(--success)"
+    );
+
+    // Scoring
+    state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    const mult = getMultiplier(state.streak);
+    const points = Math.round(matched.text.length * 10 * mult);
+    state.score += points;
+    state.wordsCompleted++;
+    state.totalChars += matched.text.length;
+
+    // Check combo tier change
+    const prevMult = getMultiplier(state.streak - 1);
+    if (mult > prevMult) sfxComboUp(); else sfxCorrect();
+
+    // Visual feedback on input
+    gameInput.classList.add("flash-green");
+    setTimeout(() => gameInput.classList.remove("flash-green"), 250);
+
+    // Remove word
+    setTimeout(() => matched.el.remove(), 450);
+    state.activeWords = state.activeWords.filter(w => w.id !== matched.id);
+
+    gameInput.value = "";
+    updateHUD();
+    return;
+  }
+
+  // Highlight partial matches
+  state.activeWords.forEach(w => {
+    if (w.text.startsWith(val)) {
+      w.el.classList.add("highlight");
+    } else {
+      w.el.classList.remove("highlight");
+    }
+  });
+}
+
+/* Shake on Enter with no match (optional feedback) */
+function handleKeydown(e) {
+  if (e.key === "Escape") {
+    togglePause();
+    return;
+  }
+  if (e.key === "Enter") {
+    const val = gameInput.value.toLowerCase().trim();
+    if (val && !state.activeWords.find(w => w.text === val)) {
+      gameInput.classList.add("shake");
+      setTimeout(() => gameInput.classList.remove("shake"), 350);
+    }
+  }
+}
+
+/* =============================================================
+   GAME TIMER TICK (every 1 second)
+   ============================================================= */
+function tick() {
+  if (!state.isRunning || state.isPaused) return;
+
+  state.elapsed++;
+  state.timeRemaining = Math.max(0, GAME_DURATION - state.elapsed);
+
+  // Update difficulty & rank
+  state.currentDifficulty = getDifficulty(state.elapsed);
+  state.rank = getRank(state.elapsed);
+
+  updateHUD();
+
+  if (state.timeRemaining <= 0) endGame(true);
+}
+
+/* =============================================================
+   SPAWN LOOP — schedules next word spawn
+   ============================================================= */
+function scheduleNextSpawn() {
+  if (!state.isRunning) return;
+  const diff = getDifficulty(state.elapsed);
+  const jitter = (Math.random() - 0.5) * 300;
+  const delay = diff.spawnInterval + jitter;
+  state.spawnTimer = setTimeout(() => {
+    if (state.isRunning && !state.isPaused) {
+      spawnWord();
+      // Burst spawn: chance to drop an extra word at higher difficulties
+      if (diff.burstChance && Math.random() < diff.burstChance) {
+        setTimeout(() => { if (state.isRunning && !state.isPaused) spawnWord(); }, 150 + Math.random() * 250);
+      }
+    }
+    scheduleNextSpawn();
+  }, delay);
+}
+
+/* =============================================================
+   PAUSE / RESUME
+   ============================================================= */
+function togglePause() {
+  if (!state.isRunning) return;
+  state.isPaused = !state.isPaused;
+
+  if (state.isPaused) {
+    // Freeze all word animations
+    gameArea.querySelectorAll(".word").forEach(w => {
+      w.style.animationPlayState = "paused";
+    });
+    showScreen("pause");
+  } else {
+    gameArea.querySelectorAll(".word").forEach(w => {
+      w.style.animationPlayState = "running";
+    });
+    showScreen("game");
+    gameInput.focus();
+  }
+}
+
+/* =============================================================
+   START GAME (via countdown)
+   ============================================================= */
+function startCountdown() {
+  initAudio();
+  showScreen("countdown");
+  let count = 3;
+  const numEl = $("#countdownNumber");
+  numEl.textContent = count;
+  sfxCountdown();
+
+  const interval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      numEl.textContent = count;
+      numEl.style.animation = "none";
+      void numEl.offsetWidth; // reflow
+      numEl.style.animation = "countPop .65s ease";
+      sfxCountdown();
+    } else if (count === 0) {
+      numEl.textContent = "GO!";
+      numEl.style.animation = "none";
+      void numEl.offsetWidth;
+      numEl.style.animation = "countPop .65s ease";
+      sfxGo();
+    } else {
+      clearInterval(interval);
+      startGame();
+    }
+  }, 850);
+}
+
+function startGame() {
+  // Reset state
+  state.score = 0;
+  state.strikes = 0;
+  state.streak = 0;
+  state.bestStreak = 0;
+  state.wordsCompleted = 0;
+  state.wordsMissed = 0;
+  state.totalChars = 0;
+  state.timeRemaining = GAME_DURATION;
+  state.elapsed = 0;
+  state.rank = "Intern";
+  state.isRunning = true;
+  state.isPaused = false;
+  state.activeWords = [];
+  state.wordIdCounter = 0;
+  state.currentDifficulty = DIFFICULTY[0];
+
+  // Clear old words
+  gameArea.innerHTML = "";
+  gameInput.value = "";
+
+  // Show game screen
+  showScreen("game");
+  gameInput.focus();
+  updateHUD();
+
+  // Start timer
+  state.tickTimer = setInterval(tick, 1000);
+
+  // Start spawning
+  spawnWord();
+  scheduleNextSpawn();
+}
+
+/* =============================================================
+   END GAME
+   ============================================================= */
+function endGame(won) {
+  state.isRunning = false;
+  clearInterval(state.tickTimer);
+  clearTimeout(state.spawnTimer);
+
+  // Clear remaining words
+  state.activeWords.forEach(w => {
+    clearTimeout(w.dangerTimeout);
+    w.el.remove();
+  });
+  state.activeWords = [];
+
+  // Calculate stats
+  const accuracy = state.wordsCompleted + state.wordsMissed > 0
+    ? Math.round((state.wordsCompleted / (state.wordsCompleted + state.wordsMissed)) * 100)
+    : 0;
+  const wpm = state.elapsed > 0
+    ? Math.round((state.totalChars / 5) / (state.elapsed / 60))
+    : 0;
+
+  // High score
+  const hs = getHighScore();
+  const isNewHS = state.score > hs;
+  if (isNewHS) setHighScore(state.score);
+
+  // Build stats HTML
+  const statsHTML = `
+    <div class="stat-box gold"><div class="stat-value">${state.score}</div><div class="stat-label">Total Score</div></div>
+    <div class="stat-box green"><div class="stat-value">${state.wordsCompleted}</div><div class="stat-label">Words Typed</div></div>
+    <div class="stat-box"><div class="stat-value">${state.bestStreak}</div><div class="stat-label">Best Streak</div></div>
+    <div class="stat-box"><div class="stat-value">${accuracy}%</div><div class="stat-label">Accuracy</div></div>
+    <div class="stat-box"><div class="stat-value">${wpm}</div><div class="stat-label">Words/Min</div></div>
+    <div class="stat-box"><div class="stat-value">${formatTime(state.elapsed)}</div><div class="stat-label">Time Survived</div></div>
+  `;
+
+  if (won) {
+    sfxWin();
+    $("#winRank").innerHTML = `&#128081; ${state.rank}`;
+    $("#winStats").innerHTML = statsHTML;
+    $("#winNewHS").style.display = isNewHS ? "block" : "none";
+    showScreen("win");
+  } else {
+    sfxLose();
+    $("#loseRank").innerHTML = `&#128188; ${state.rank}`;
+    $("#loseStats").innerHTML = statsHTML;
+    $("#loseNewHS").style.display = isNewHS ? "block" : "none";
+    showScreen("lose");
+  }
+}
+
+/* =============================================================
+   EVENT LISTENERS
+   ============================================================= */
+// Start / Instructions
+$("#btnStart").addEventListener("click", startCountdown);
+$("#btnInstructions").addEventListener("click", () => showScreen("instructions"));
+$("#btnCloseInstructions").addEventListener("click", () => showScreen("start"));
+
+// Game input
+gameInput.addEventListener("input", handleInput);
+document.addEventListener("keydown", handleKeydown);
+
+// Pause / Resume
+$("#btnPause").addEventListener("click", togglePause);
+$("#btnResume").addEventListener("click", togglePause);
+
+// Mute toggle
+$("#btnMute").addEventListener("click", () => {
+  muted = !muted;
+  $("#btnMute").innerHTML = muted ? "&#128263;" : "&#128264;";
+});
+
+// Restart buttons
+$("#btnRestartWin").addEventListener("click", () => {
+  updateHighScoreBadge();
+  animateTitle();
+  showScreen("start");
+});
+$("#btnRestartLose").addEventListener("click", () => {
+  updateHighScoreBadge();
+  animateTitle();
+  showScreen("start");
+});
+
+// Prevent form submission / page reload
+gameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") e.preventDefault();
+});
+
+// Keep focus on input during game
+document.addEventListener("click", () => {
+  if (state.isRunning && !state.isPaused) gameInput.focus();
+});
+
+/* =============================================================
+   INIT
+   ============================================================= */
+createBgShapes();
+animateTitle();
+updateHighScoreBadge();
+</script>
+</body>
+</html>
