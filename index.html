@@ -107,7 +107,7 @@ html,body {
    FLOATING BACKGROUND SHAPES (decorative)
    ============================================================ */
 .bg-shapes {
-  position: fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  position: fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
 }
 .bg-shapes span {
   position: absolute;
@@ -129,11 +129,6 @@ html,body {
 .start-title {
   font-size: clamp(2.8rem, 7vw, 5rem);
   font-weight: 800; letter-spacing: -1px;
-  background: linear-gradient(135deg, var(--accent-glow) 0%, var(--gold-light) 50%, var(--accent-glow) 100%);
-  background-size: 200% 200%;
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientShift 4s ease infinite;
   text-align: center;
   filter: drop-shadow(0 0 30px rgba(59,130,246,.3));
 }
@@ -160,6 +155,11 @@ html,body {
   opacity: 0;
   transform: translateY(30px) scale(.7);
   animation: charIn .45s ease forwards;
+  background: linear-gradient(135deg, var(--accent-glow) 0%, var(--gold-light) 50%, var(--accent-glow) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: charIn .45s ease forwards, gradientShift 4s ease infinite;
 }
 @keyframes charIn {
   to { opacity:1; transform:translateY(0) scale(1); }
@@ -485,6 +485,69 @@ html,body {
 #loseScreen h2 { color:var(--danger); }
 
 /* ============================================================
+   USERNAME INPUT
+   ============================================================ */
+.username-area {
+  display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom: 4px;
+}
+.username-area label {
+  font-size:.85rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; font-weight:500;
+}
+.username-input {
+  width: min(320px, 75vw);
+  padding: 12px 20px;
+  font-size: 1.05rem; font-family: var(--font); font-weight: 600;
+  color: var(--text);
+  background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.12);
+  border-radius: 50px;
+  outline: none; text-align: center; letter-spacing: .5px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.username-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(59,130,246,.2);
+}
+.username-input::placeholder { color: rgba(255,255,255,.25); }
+.username-error {
+  font-size:.8rem; color:var(--danger); height:18px; transition: opacity .2s;
+}
+
+/* ============================================================
+   LEADERBOARD
+   ============================================================ */
+#leaderboardScreen { z-index:12; }
+.leaderboard-card {
+  width: min(520px, 90vw); max-height:80vh;
+  padding: 36px 30px; overflow-y:auto; text-align:center;
+}
+.leaderboard-card h2 {
+  font-size:1.5rem; margin-bottom:20px;
+  background: linear-gradient(135deg, var(--gold-light), var(--accent-glow));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip:text;
+}
+.lb-table {
+  width:100%; border-collapse:collapse; margin-bottom:20px;
+}
+.lb-table th {
+  font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--text-dim); padding:8px 6px; border-bottom:1px solid rgba(255,255,255,.08);
+}
+.lb-table td {
+  padding:10px 6px; font-size:.95rem; border-bottom:1px solid rgba(255,255,255,.05);
+}
+.lb-table tr:hover td { background:rgba(255,255,255,.03); }
+.lb-rank { font-weight:800; color:var(--text-dim); width:40px; }
+.lb-rank.gold   { color:var(--gold-light); }
+.lb-rank.silver { color:#c0c0c0; }
+.lb-rank.bronze { color:#cd7f32; }
+.lb-name { font-weight:600; text-align:left; }
+.lb-score { font-weight:700; color:var(--accent-glow); }
+.lb-detail { color:var(--text-dim); font-size:.82rem; }
+.lb-empty { color:var(--text-dim); font-size:.95rem; padding:30px 0; }
+.lb-you { background:rgba(59,130,246,.08); }
+
+/* ============================================================
    SCROLLBAR
    ============================================================ */
 ::-webkit-scrollbar { width:6px; }
@@ -505,12 +568,15 @@ html,body {
 <div class="screen active" id="startScreen">
   <h1 class="start-title" id="titleText"></h1>
   <p class="start-tagline">Type fast. Climb higher. Don't get fired.<br>A fast-paced typing survival game.</p>
+  <div class="username-area">
+    <label for="usernameInput">Enter your name</label>
+    <input type="text" id="usernameInput" class="username-input" placeholder="Your name..." maxlength="16" autocomplete="off">
+    <div class="username-error" id="usernameError">&nbsp;</div>
+  </div>
   <div class="start-buttons">
     <button class="btn" id="btnStart">&#9654;&ensp;Start Game</button>
     <button class="btn secondary" id="btnInstructions">&#9432;&ensp;How to Play</button>
-  </div>
-  <div class="high-score-badge" id="highScoreBadge" style="display:none">
-    &#127942; Best Score: <span id="highScoreValue">0</span>
+    <button class="btn secondary" id="btnLeaderboard">&#127942;&ensp;Leaderboard</button>
   </div>
 </div>
 
@@ -626,6 +692,7 @@ html,body {
     <div class="stats-grid" id="winStats"></div>
     <div class="end-buttons">
       <button class="btn gold" id="btnRestartWin">&#9654;&ensp;Play Again</button>
+      <button class="btn secondary" id="btnLBWin">&#127942;&ensp;Leaderboard</button>
     </div>
   </div>
 </div>
@@ -643,7 +710,19 @@ html,body {
     <div class="stats-grid" id="loseStats"></div>
     <div class="end-buttons">
       <button class="btn danger" id="btnRestartLose">&#9654;&ensp;Try Again</button>
+      <button class="btn secondary" id="btnLBLose">&#127942;&ensp;Leaderboard</button>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LEADERBOARD SCREEN
+     ============================================================ -->
+<div class="screen" id="leaderboardScreen">
+  <div class="glass leaderboard-card">
+    <h2>&#127942; Leaderboard</h2>
+    <div id="leaderboardBody"></div>
+    <button class="btn secondary" id="btnLBClose" style="margin-top:8px;width:100%;">Back</button>
   </div>
 </div>
 
@@ -656,7 +735,12 @@ html,body {
    ============================================================= */
 const WORDS_EASY = [
   "KPI","bug","git","API","CSS","UX","SQL","dev","var","log",
-  "MVP","ROI","SLA","OKR","DNS","TCP","SSH","npm","hub","app"
+  "MVP","ROI","SLA","OKR","DNS","TCP","SSH","npm","hub","app",
+  "CEO","CTO","CFO","COO","HR","IT","PR","IP","PM","QA",
+  "ram","cpu","bot","map","win","tax","bid","cap","fee","net",
+  "pen","fax","tab","tag","job","pay","cut","run","fix","set",
+  "sum","pdf","zip","xml","dom","vue","php","aws","gcp","ios",
+  "mac","ram","ops","sec","seo","url","cdn","pdf","crm","erp"
 ];
 const WORDS_MEDIUM = [
   "sync","team","memo","task","code","push","pull","test","ship","scrum",
@@ -664,7 +748,20 @@ const WORDS_MEDIUM = [
   "flow","loop","node","repo","diff","hash","ping","ajax","heap","type",
   "agile","merge","build","audit","brand","cloud","debug","event","fetch",
   "grant","issue","model","query","route","scale","stack","token","email",
-  "scope","stand","usage","board","chart","delay","draft","input","lease"
+  "scope","stand","usage","board","chart","delay","draft","input","lease",
+  "deal","loss","gain","loan","wage","unit","rate","sale","fund","bond",
+  "cash","cost","debt","earn","exit","flex","fork","grep","hook","java",
+  "link","load","lock","mine","mock","move","pack","pair","port","prop",
+  "rage","read","rest","rust","save","scan","seed","self","site","slot",
+  "sort","span","spec","swap","sync","test","tick","tool","trap","trim",
+  "view","void","vote","wait","walk","wiki","wrap","yaml","zero","zone",
+  "admin","align","batch","cache","chain","claim","clone","coach","crash",
+  "cycle","drive","error","evict","share","shift","solve","spend","split",
+  "stock","store","suite","surge","swift","trade","trend","trust","tweak",
+  "unity","value","vault","watch","yield","brief","craft","eager","flick",
+  "focus","frame","index","inner","joint","knock","labor","layer","media",
+  "offer","orbit","owner","panel","phase","pitch","point","prime","proof",
+  "quest","quick","quota","rally","react","redis","round","setup","sharp"
 ];
 const WORDS_HARD = [
   "deploy","sprint","budget","synergy","merger","profit","growth","legacy",
@@ -672,7 +769,18 @@ const WORDS_HARD = [
   "kernel","module","docker","devops","cursor","search","binary","config",
   "dunning","equity","impact","intern","junior","launch","markup","native",
   "patent","portal","schema","signal","syntax","thread","ticket","vendor",
-  "widget","window","annual","branch","commit","comply","deceit"
+  "widget","window","annual","branch","commit","comply","deceit",
+  "anchor","backup","beacon","bridge","broker","bundle","canvas","carbon",
+  "cipher","daemon","demand","detail","digest","domain","effort","enable",
+  "fabric","filter","format","global","handle","hybrid","import","inject",
+  "leader","lineup","lookup","margin","master","medium","metric","notice",
+  "offset","option","output","packet","parser","pledge","plugin","policy",
+  "preset","priors","prompt","record","reduce","reform","reject","remedy",
+  "remote","repeal","replay","report","result","retain","return","sample",
+  "screen","sector","select","serial","settle","shield","shrink","simple",
+  "single","smooth","source","stable","status","stream","strict","strike",
+  "subnet","supply","switch","symbol","system","target","tender","toggle",
+  "typing","unique","update","upload","vector","verify","waiver","worker"
 ];
 const WORDS_EXPERT = [
   "backlog","meeting","roadmap","mandate","revenue","quarter","divest",
@@ -680,7 +788,22 @@ const WORDS_EXPERT = [
   "package","process","project","release","runtime","sandbox","testing",
   "upgrade","version","webhook","wrapper","adapter","binding","cluster",
   "console","monitor","payload","service","utility","balance","capital",
-  "deficit","expense","invoice","subsidy","surplus","outcome"
+  "deficit","expense","invoice","subsidy","surplus","outcome",
+  "account","backend","benefit","billing","billion","cabinet","cadence",
+  "catalog","charter","circuit","classic","comment","compact","company",
+  "compile","compute","concept","conduct","connect","context","control",
+  "convert","copycat","council","counter","deposit","desktop","develop",
+  "digital","dismiss","display","disrupt","economy","element","enabled",
+  "engaged","exploit","extern","extract","factory","failure","fashion",
+  "feature","finance","firefly","formula","fortune","founder","fulfill",
+  "funding","general","generic","gradual","graphic","handoff","harmony",
+  "harvest","history","imaging","initial","install","interim","iterate",
+  "journal","keynote","kubectl","layoffs","ledgers","literal","loading",
+  "locally","logical","mailbox","manager","mapping","medical","meeting",
+  "mission","modular","molding","monthly","nesting","neutral","nominal",
+  "nuclear","offline","organic","outline","outlook","overlay","overtop",
+  "percent","pioneer","plastic","playful","portion","premium","prepaid",
+  "preview","pricing","printer","private","produce","profits","program"
 ];
 const WORDS_MASTER = [
   "deadline","pipeline","kanboard","feedback","refactor","strategy",
@@ -690,7 +813,26 @@ const WORDS_MASTER = [
   "forecast","overhead","proposal","research","turnover","meetings",
   "alliance","blogging","branding","campaign","customer","delegate",
   "engineer","investor","momentum","optimize","priority","resource",
-  "schedule","solution","transfer","warranty"
+  "schedule","solution","transfer","warranty",
+  "abstract","activate","adjacent","advanced","advocate","analysis",
+  "annually","appendix","approach","approval","archived","assembly",
+  "backbone","baseline","bookmark","bootcamp","breakout","browsers",
+  "callback","capacity","cashflow","category","champion","chapters",
+  "checkout","circular","classify","clickbag","coaching","collapse",
+  "combined","commence","commerce","commuter","complain","complete",
+  "conclude","conflict","consider","construe","consumer","contempt",
+  "continue","contract","converge","coworker","creative","criteria",
+  "critical","crossref","currency","customer","database","datamine",
+  "debugger","decision","decompose","decrease","deferral","deflated",
+  "delivery","departed","designer","detailed","discover","dispatch",
+  "distinct","dividend","document","domestic","download","drainage",
+  "dropdown","duration","dynamics","earnings","educated","election",
+  "elevator","embedded","employer","emulator","encoding","ecommerce",
+  "endpoint","engaging","enormity","enrolled","entities","envelope",
+  "estimate","evaluate","eventual","evidence","exchange","executor",
+  "exercise","expanded","expected","expedite","explicit","explorer",
+  "exponent","external","farewell","feasible","feedback","filepath",
+  "finalize","firmware","flexible","floating","flywheel","footnote"
 ];
 const WORDS_LEGENDARY = [
   "alignment","bandwidth","benchmark","bootstrap","component","container",
@@ -700,11 +842,40 @@ const WORDS_LEGENDARY = [
   "financial","guideline","implement","interview","licensing","logistics",
   "narrative","objective","promotion","quarterly","redundant","scaleable",
   "strategic","technique","workforce","synergize","downscale","ownership",
-  "quarterly","proactive","increment","microchip","blueprint","algorithm",
-  "appliance","broadband","checkfile","datasheet","ecosystem","fasttrace",
-  "guarantee","headcount","lifecycle","mentoring","netpolicy","offboard",
-  "paperwork","quickscan","roadblock","subsystem","takeaways","underline",
-  "valuation","warehouse","yearlyrev"
+  "proactive","increment","microchip","blueprint","algorithm",
+  "appliance","broadband","datasheet","ecosystem",
+  "guarantee","headcount","lifecycle","mentoring",
+  "paperwork","roadblock","subsystem","takeaways","underline",
+  "valuation","warehouse",
+  "abundance","accompany","advertise","aggregate","analogous","asserting",
+  "authorize","backorder","ballpoint","bargainer","benchmark","bilateral",
+  "blacklist","boardroom","breakdown","broadcast","brutality","budgeting",
+  "burnished","byproduct","cafeteria","calculate","cancelled","carpentry",
+  "celebrate","centrally","certified","changelog","classroom","clipboard",
+  "cognitive","collapsed","combative","commander","commodity","community",
+  "competent","compliant","component","composing","computing","concerned",
+  "concierge","condition","conducted","configure","confirmed","congresss",
+  "connector","conscious","consensus","construct","consulted","contender",
+  "continual","contracts","converted","copyright","countdown","courtship",
+  "craftwork","crediting","crossover","customize","cyberpunk","dandified",
+  "dashboard","databases","debugging","declining","dedicated","defaulted",
+  "defensive","deflation","delegated","delivered","demanding","departure",
+  "dependent","depiction","deploying","deprecate","described","designing",
+  "detective","developed","developer","deviation","digestion","dimension",
+  "directing","directive","directory","disabling","disbursed","disclosed",
+  "discovery","discussed","dismissal","displaced","dockerize","docstring",
+  "downgrade","droppable","duplicate","ecommerce","educating","educative",
+  "effective","efficient","elaborate","electrode","elevating","eliminate",
+  "embracing","emergency","empowered","encrypted","endurance","energized",
+  "enforcing","engrossed","enjoyable","enjoyment","enrolling","ensurance",
+  "entailing","enumerate","ephemeral","equipment","equitable","erroneous",
+  "essential","establish","estimated","evaluated","examining","exception",
+  "excessive","excluding","exclusive","executive","exemption","exhausted",
+  "expanding","expansion","expedited","expensive","explained","exploited",
+  "explosion","exporting","expressed","extending","extension","extracted",
+  "extremist","fabricate","factoring","favorable","featuring","feedstock",
+  "firewalls","formation","formidabl","framework","franchise","fulfillin",
+  "functions","furnisher","generated","generator","globalize","governing"
 ];
 
 /* Rank config: name, min-seconds into game */
@@ -755,12 +926,38 @@ function playTone(freq, duration, type, vol) {
   osc.start(); osc.stop(audioCtx.currentTime + duration);
 }
 function sfxCorrect()  { playTone(880,.12,"sine",.18); setTimeout(()=>playTone(1100,.1,"sine",.12),60); }
-function sfxStrike()   { playTone(180,.25,"sawtooth",.15); }
+function sfxStrike() {
+  // Play custom MP3 based on which strike this is
+  const strikeSounds = [
+    "Soundeffects/fahhhhh.mp3",
+    "Soundeffects/get-down-boy.mp3",
+    "Soundeffects/long-fahhh-made-with-Voicemod.mp3"
+  ];
+  const idx = Math.min(state.strikes - 1, strikeSounds.length - 1);
+  if (!muted && idx >= 0) {
+    const audio = new Audio(strikeSounds[idx]);
+    audio.volume = 0.7;
+    audio.play().catch(() => {});
+  }
+}
 function sfxComboUp()  { playTone(660,.08,"sine",.12); setTimeout(()=>playTone(880,.08,"sine",.12),70); setTimeout(()=>playTone(1100,.12,"sine",.12),140); }
 function sfxCountdown(){ playTone(440,.15,"sine",.1); }
 function sfxGo()       { playTone(660,.1,"sine",.14); setTimeout(()=>playTone(880,.15,"sine",.14),80); }
 function sfxWin()      { [0,100,200,300,400].forEach((d,i)=>setTimeout(()=>playTone(600+i*100,.15,"sine",.12),d)); }
 function sfxLose()     { playTone(300,.3,"sawtooth",.12); setTimeout(()=>playTone(200,.4,"sawtooth",.1),200); }
+
+/* Background music */
+let bgMusic = null;
+function startBGM() {
+  if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
+  bgMusic = new Audio("Soundeffects/geometry-dash-menu-theme-made-with-Voicemod.mp3");
+  bgMusic.loop = true;
+  bgMusic.volume = 0.25;
+  if (!muted) bgMusic.play().catch(() => {});
+}
+function stopBGM() {
+  if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
+}
 
 /* =============================================================
    GAME STATE
@@ -783,6 +980,7 @@ let state = {
   tickTimer: null,
   currentDifficulty: DIFFICULTY[0],
   wordIdCounter: 0,
+  playerName: "",
 };
 
 /* =============================================================
@@ -799,6 +997,7 @@ const screens = {
   pause:        $("#pauseOverlay"),
   win:          $("#winScreen"),
   lose:         $("#loseScreen"),
+  leaderboard:  $("#leaderboardScreen"),
 };
 const hud = {
   score:  $("#hudScore"),
@@ -834,6 +1033,60 @@ function getHighScore() {
 }
 function setHighScore(val) {
   localStorage.setItem("cl_highscore", val.toString());
+}
+
+/* --- Leaderboard (localStorage, all players) --- */
+function getLeaderboard() {
+  try { return JSON.parse(localStorage.getItem("cl_leaderboard") || "[]"); }
+  catch { return []; }
+}
+function saveToLeaderboard(name, score, rank, wordsCompleted, bestStreak) {
+  const lb = getLeaderboard();
+  // Find existing entry for this player
+  const existing = lb.find(e => e.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    // Only update if new score is higher
+    if (score > existing.score) {
+      existing.score = score;
+      existing.rank = rank;
+      existing.words = wordsCompleted;
+      existing.streak = bestStreak;
+      existing.date = Date.now();
+    }
+  } else {
+    lb.push({ name, score, rank, words: wordsCompleted, streak: bestStreak, date: Date.now() });
+  }
+  // Sort by score descending, keep top 20
+  lb.sort((a, b) => b.score - a.score);
+  localStorage.setItem("cl_leaderboard", JSON.stringify(lb.slice(0, 20)));
+}
+function renderLeaderboard(highlightName) {
+  const lb = getLeaderboard();
+  const body = $("#leaderboardBody");
+  if (lb.length === 0) {
+    body.innerHTML = '<div class="lb-empty">No scores yet. Be the first to play!</div>';
+    return;
+  }
+  const medalClass = (i) => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+  const medal = (i) => i === 0 ? "\uD83E\uDD47" : i === 1 ? "\uD83E\uDD48" : i === 2 ? "\uD83E\uDD49" : (i + 1);
+  let html = '<table class="lb-table"><thead><tr><th>#</th><th style="text-align:left">Player</th><th>Score</th><th>Rank</th><th>Streak</th></tr></thead><tbody>';
+  lb.forEach((e, i) => {
+    const isYou = highlightName && e.name.toLowerCase() === highlightName.toLowerCase();
+    html += `<tr class="${isYou ? 'lb-you' : ''}">`;
+    html += `<td class="lb-rank ${medalClass(i)}">${medal(i)}</td>`;
+    html += `<td class="lb-name">${escapeHTML(e.name)}</td>`;
+    html += `<td class="lb-score">${e.score}</td>`;
+    html += `<td class="lb-detail">${e.rank || '-'}</td>`;
+    html += `<td class="lb-detail">${e.streak || 0}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+function escapeHTML(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -881,6 +1134,15 @@ function animateTitle() {
     span.style.animationDelay = (i * 0.04) + "s";
     el.appendChild(span);
   });
+  // Add ™ superscript
+  const tm = document.createElement("sup");
+  tm.className = "char";
+  tm.textContent = "™";
+  tm.style.animationDelay = (text.length * 0.04) + "s";
+  tm.style.fontSize = "0.45em";
+  tm.style.verticalAlign = "super";
+  tm.style.opacity = "0";
+  el.appendChild(tm);
 }
 
 /* =============================================================
@@ -1013,6 +1275,8 @@ function spawnWord() {
     state.wordsMissed++;
     sfxStrike();
     flashStrike();
+    gameInput.value = "";
+    state.activeWords.forEach(w => w.el.classList.remove("highlight"));
     updateHUD();
     setTimeout(() => { el.remove(); }, 500);
     state.activeWords = state.activeWords.filter(w => w.id !== wordId);
@@ -1093,6 +1357,12 @@ function handleKeydown(e) {
     togglePause();
     return;
   }
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    gameInput.value = "";
+    state.activeWords.forEach(w => w.el.classList.remove("highlight"));
+    return;
+  }
   if (e.key === "Enter") {
     const val = gameInput.value.toLowerCase().trim();
     if (val && !state.activeWords.find(w => w.text === val)) {
@@ -1152,11 +1422,13 @@ function togglePause() {
     gameArea.querySelectorAll(".word").forEach(w => {
       w.style.animationPlayState = "paused";
     });
+    if (bgMusic && !muted) bgMusic.pause();
     showScreen("pause");
   } else {
     gameArea.querySelectorAll(".word").forEach(w => {
       w.style.animationPlayState = "running";
     });
+    if (bgMusic && !muted) bgMusic.play().catch(() => {});
     showScreen("game");
     gameInput.focus();
   }
@@ -1227,6 +1499,9 @@ function startGame() {
   // Start spawning
   spawnWord();
   scheduleNextSpawn();
+
+  // Start background music
+  startBGM();
 }
 
 /* =============================================================
@@ -1236,6 +1511,7 @@ function endGame(won) {
   state.isRunning = false;
   clearInterval(state.tickTimer);
   clearTimeout(state.spawnTimer);
+  stopBGM();
 
   // Clear remaining words
   state.activeWords.forEach(w => {
@@ -1256,6 +1532,9 @@ function endGame(won) {
   const hs = getHighScore();
   const isNewHS = state.score > hs;
   if (isNewHS) setHighScore(state.score);
+
+  // Save to leaderboard
+  saveToLeaderboard(state.playerName, state.score, state.rank, state.wordsCompleted, state.bestStreak);
 
   // Build stats HTML
   const statsHTML = `
@@ -1285,10 +1564,34 @@ function endGame(won) {
 /* =============================================================
    EVENT LISTENERS
    ============================================================= */
-// Start / Instructions
-$("#btnStart").addEventListener("click", startCountdown);
+// Start / Instructions / Leaderboard
+$("#btnStart").addEventListener("click", () => {
+  const name = $("#usernameInput").value.trim();
+  if (!name) {
+    $("#usernameError").textContent = "Please enter a name!";
+    $("#usernameInput").focus();
+    return;
+  }
+  $("#usernameError").innerHTML = "&nbsp;";
+  state.playerName = name;
+  startCountdown();
+});
+$("#usernameInput").addEventListener("input", () => {
+  $("#usernameError").innerHTML = "&nbsp;";
+});
+// Allow pressing Enter in the username field to start
+$("#usernameInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); $("#btnStart").click(); }
+});
 $("#btnInstructions").addEventListener("click", () => showScreen("instructions"));
 $("#btnCloseInstructions").addEventListener("click", () => showScreen("start"));
+
+// Leaderboard buttons (start screen + end screens)
+let lbReturnScreen = "start";
+$("#btnLeaderboard").addEventListener("click", () => { lbReturnScreen = "start"; renderLeaderboard(null); showScreen("leaderboard"); });
+$("#btnLBWin").addEventListener("click", () => { lbReturnScreen = "win"; renderLeaderboard(state.playerName); showScreen("leaderboard"); });
+$("#btnLBLose").addEventListener("click", () => { lbReturnScreen = "lose"; renderLeaderboard(state.playerName); showScreen("leaderboard"); });
+$("#btnLBClose").addEventListener("click", () => showScreen(lbReturnScreen));
 
 // Game input
 gameInput.addEventListener("input", handleInput);
@@ -1302,16 +1605,15 @@ $("#btnResume").addEventListener("click", togglePause);
 $("#btnMute").addEventListener("click", () => {
   muted = !muted;
   $("#btnMute").innerHTML = muted ? "&#128263;" : "&#128264;";
+  if (bgMusic) { muted ? bgMusic.pause() : bgMusic.play().catch(() => {}); }
 });
 
 // Restart buttons
 $("#btnRestartWin").addEventListener("click", () => {
-  updateHighScoreBadge();
   animateTitle();
   showScreen("start");
 });
 $("#btnRestartLose").addEventListener("click", () => {
-  updateHighScoreBadge();
   animateTitle();
   showScreen("start");
 });
@@ -1332,6 +1634,9 @@ document.addEventListener("click", () => {
 createBgShapes();
 animateTitle();
 updateHighScoreBadge();
+// Restore last used name if available
+const lastPlayer = getLeaderboard()[0];
+if (lastPlayer) $("#usernameInput").value = "";
 </script>
 </body>
 </html>
