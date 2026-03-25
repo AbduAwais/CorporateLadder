@@ -731,6 +731,12 @@ html,body {
      ============================================================ -->
 <script>
 /* =============================================================
+   API CONFIGURATION
+   ============================================================= */
+// Change this to your Azure VM URL when deployed (e.g. "https://your-api.example.com")
+const API_BASE = "http://localhost:8000";
+
+/* =============================================================
    WORD POOL — categorised by length / difficulty
    ============================================================= */
 const WORDS_EASY = [
@@ -1035,17 +1041,16 @@ function setHighScore(val) {
   localStorage.setItem("cl_highscore", val.toString());
 }
 
-/* --- Leaderboard (localStorage, all players) --- */
+/* --- Leaderboard (API + localStorage fallback) --- */
 function getLeaderboard() {
   try { return JSON.parse(localStorage.getItem("cl_leaderboard") || "[]"); }
   catch { return []; }
 }
 function saveToLeaderboard(name, score, rank, wordsCompleted, bestStreak) {
+  // Save to localStorage as fallback
   const lb = getLeaderboard();
-  // Find existing entry for this player
   const existing = lb.find(e => e.name.toLowerCase() === name.toLowerCase());
   if (existing) {
-    // Only update if new score is higher
     if (score > existing.score) {
       existing.score = score;
       existing.rank = rank;
@@ -1056,17 +1061,18 @@ function saveToLeaderboard(name, score, rank, wordsCompleted, bestStreak) {
   } else {
     lb.push({ name, score, rank, words: wordsCompleted, streak: bestStreak, date: Date.now() });
   }
-  // Sort by score descending, keep top 20
   lb.sort((a, b) => b.score - a.score);
   localStorage.setItem("cl_leaderboard", JSON.stringify(lb.slice(0, 20)));
+
+  // Also submit to remote API (fire-and-forget)
+  fetch(API_BASE + "/api/leaderboard", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, score, rank, words: wordsCompleted, streak: bestStreak })
+  }).catch(() => { /* API offline — localStorage still has the data */ });
 }
-function renderLeaderboard(highlightName) {
-  const lb = getLeaderboard();
-  const body = $("#leaderboardBody");
-  if (lb.length === 0) {
-    body.innerHTML = '<div class="lb-empty">No scores yet. Be the first to play!</div>';
-    return;
-  }
+function buildLeaderboardHTML(lb, highlightName) {
+  if (lb.length === 0) return '<div class="lb-empty">No scores yet. Be the first to play!</div>';
   const medalClass = (i) => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
   const medal = (i) => i === 0 ? "\uD83E\uDD47" : i === 1 ? "\uD83E\uDD48" : i === 2 ? "\uD83E\uDD49" : (i + 1);
   let html = '<table class="lb-table"><thead><tr><th>#</th><th style="text-align:left">Player</th><th>Score</th><th>Rank</th><th>Streak</th></tr></thead><tbody>';
@@ -1081,7 +1087,18 @@ function renderLeaderboard(highlightName) {
     html += '</tr>';
   });
   html += '</tbody></table>';
-  body.innerHTML = html;
+  return html;
+}
+function renderLeaderboard(highlightName) {
+  const body = $("#leaderboardBody");
+  body.innerHTML = '<div class="lb-empty">Loading…</div>';
+  fetch(API_BASE + "/api/leaderboard")
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(lb => { body.innerHTML = buildLeaderboardHTML(lb, highlightName); })
+    .catch(() => {
+      // Fallback to localStorage if API is unavailable
+      body.innerHTML = buildLeaderboardHTML(getLeaderboard(), highlightName);
+    });
 }
 function escapeHTML(str) {
   const d = document.createElement('div');
